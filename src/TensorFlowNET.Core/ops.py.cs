@@ -45,12 +45,18 @@ namespace Tensorflow
             return get_default_graph().get_collection(key, scope);
         }
 
+        public static List<T> get_collection<T>(string key, string scope = null)
+        {
+            return get_default_graph().get_collection<T>(key, scope);
+        }
+
         public static object get_collection_ref(string key)
         {
             return get_default_graph().get_collection_ref(key);
         }
 
-        private static Graph default_graph;
+        public static DefaultGraphStack default_graph_stack = new DefaultGraphStack();
+
         /// <summary>
         /// Returns the default graph for the current thread.
         /// 
@@ -68,15 +74,13 @@ namespace Tensorflow
         {
             //TODO: original source indicates there should be a _default_graph_stack!
             //return _default_graph_stack.get_default()
-            if (default_graph == null)
-                default_graph = tf.Graph();
-            return default_graph;
+            return default_graph_stack.get_controller();
         }
         public static Graph set_default_graph(Graph graph)
         {
             //TODO: original source does not have a 'set_default_graph' and indicates there should be a _default_graph_stack!
-            default_graph = graph;
-            return default_graph;
+            default_graph_stack.set_controller(graph);
+            return default_graph_stack.get_controller();
         }
 
         /// <summary>
@@ -96,10 +100,7 @@ namespace Tensorflow
             //    throw new InvalidOperationException("Do not use tf.reset_default_graph() to clear " +
             //                                    "nested graphs. If you need a cleared graph, " +
             //                                    "exit the nesting and create a new graph.");
-            //_default_graph_stack.reset();
-            if (default_graph!=null)
-                default_graph.Dispose();
-            default_graph = tf.Graph();
+            default_graph_stack.reset();
         }
 
         public static Graph _get_graph_from_inputs(params Tensor[] op_input_list)
@@ -472,7 +473,7 @@ namespace Tensorflow
                 case Tensor[] tensors:
                     return array_ops._autopacking_helper(tensors, dtype, name == null ? "packed" : name);
                 case RefVariable varVal:
-                    return varVal._TensorConversionFunction(as_ref: as_ref);
+                    return varVal._TensorConversionFunction(dtype: dtype, name: name, as_ref: as_ref);
                 case ResourceVariable varVal:
                     return null;
                 case object[] objects:

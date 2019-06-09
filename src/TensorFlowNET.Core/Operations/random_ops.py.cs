@@ -49,7 +49,7 @@ namespace Tensorflow
         /// <returns>A tensor of the specified shape filled with random uniform values.</returns>
         public static Tensor random_uniform(int[] shape, 
             float minval = 0,
-            float? maxval = null,
+            float maxval = 1,
             TF_DataType dtype = TF_DataType.TF_FLOAT, 
             int? seed = null, 
             string name = null)
@@ -76,7 +76,7 @@ namespace Tensorflow
             {
                 name = scope;
                 var minTensor = ops.convert_to_tensor(minval, dtype: dtype, name: "min");
-                var maxTensor = ops.convert_to_tensor(maxval, dtype: dtype, name: "max");
+                var maxTensor = ops.convert_to_tensor(maxval == null ? 1 : maxval, dtype: dtype, name: "max");
                 var (seed1, seed2) = random_seed.get_seed(seed);
                 if (dtype.is_integer())
                 {

@@ -1,11 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Tensorflow
 {
     public static partial class tf
     {
+        /// <summary>
+        /// Concatenates tensors along one dimension.
+        /// </summary>
+        /// <param name="values">A list of `Tensor` objects or a single `Tensor`.</param>
+        /// <param name="axis"></param>
+        /// <param name="name"></param>
+        /// <returns>A `Tensor` resulting from concatenation of the input tensors.</returns>
+        public static Tensor concat(IList<Tensor> values, int axis, string name = "concat")
+        {
+            if (values.Count == 1)
+                throw new NotImplementedException("tf.concat length is 1");
+
+            return gen_array_ops.concat_v2(values.ToArray(), axis, name: name);
+        }
+
         /// <summary>
         /// Inserts a dimension of 1 into a tensor's shape.
         /// </summary>
@@ -19,6 +35,13 @@ namespace Tensorflow
         /// </returns>
         public static Tensor expand_dims(Tensor input, int axis = -1, string name = null, int dim = -1)
             => array_ops.expand_dims(input, axis, name, dim);
+
+        /// <summary>
+        /// Return the elements, either from `x` or `y`, depending on the `condition`.
+        /// </summary>
+        /// <returns></returns>
+        public static Tensor where<Tx, Ty>(Tensor condition, Tx x, Ty y, string name = null)
+            => array_ops.where(condition, x, y, name);
 
         /// <summary>
         /// Transposes `a`. Permutes the dimensions according to `perm`.

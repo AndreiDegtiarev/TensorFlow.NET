@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using static Tensorflow.Python;
 
 namespace Tensorflow.Layers
 {
@@ -47,12 +48,18 @@ namespace Tensorflow.Layers
             else
             {
                 scope_context_manager = tf.variable_scope(_scope,
+                    reuse: _reuse,
                     auxiliary_name_scope: false);
             }
 
-            Python.with(scope_context_manager, scope2 => _current_scope = scope2);
-            // Actually call layer
-            var outputs = base.__call__(new Tensor[] { inputs }, training: training);
+            Tensor outputs = null;
+            with(scope_context_manager, scope2 =>
+            {
+                _current_scope = scope2;
+                // Actually call layer
+                outputs = base.__call__(new Tensor[] { inputs }, training: training);
+            });
+
 
             // Update global default collections.
             _add_elements_to_collection(_updates.ToArray(), new string[] { ops.GraphKeys.UPDATE_OPS });
@@ -72,6 +79,17 @@ namespace Tensorflow.Layers
             }
         }
 
+        /// <summary>
+        /// Adds a new variable to the layer, or gets an existing one; returns it.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="shape"></param>
+        /// <param name="dtype"></param>
+        /// <param name="initializer"></param>
+        /// <param name="trainable"></param>
+        /// <param name="synchronization"></param>
+        /// <param name="aggregation"></param>
+        /// <returns></returns>
         protected virtual RefVariable add_weight(string name,
             int[] shape,
             TF_DataType dtype = TF_DataType.DtInvalid,
@@ -99,34 +117,33 @@ namespace Tensorflow.Layers
 
             _set_scope();
             var reuse = built || (_reuse != null && _reuse.Value);
-            return Python.with(tf.variable_scope(_scope, 
-                reuse: reuse, 
+            return with(tf.variable_scope(_scope,
+                reuse: reuse,
                 auxiliary_name_scope: false), scope =>
-            {
-                _current_scope = scope;
-                return Python.with(ops.name_scope(_name_scope()), delegate
                 {
-                    var variable = base.add_weight(name,
-                        shape,
-                        dtype: dtype,
-                        initializer: initializer,
-                        trainable: trainable,
-                        getter: (name1, shape1, dtype1, initializer1, trainable1) =>
-                        {
-                            return tf.get_variable(name1, 
-                                shape: new TensorShape(shape1),
-                                dtype: dtype1,
-                                initializer: initializer1,
-                                trainable: trainable1);
-                        });
-
-                    if(init_graph != null)
+                    _current_scope = scope;
+                    return with(ops.name_scope(_name_scope()), delegate
                     {
-                        var trainable_variables = variables.trainable_variables();
-                    }
-                    return variable;
+                        var variable = base.add_weight(name,
+                            shape,
+                            dtype: dtype,
+                            initializer: initializer,
+                            trainable: trainable,
+                            getter: (name1, shape1, dtype1, initializer1, trainable1) =>
+                            {
+                                return tf.get_variable(name1,
+                                    shape: new TensorShape(shape1),
+                                    dtype: dtype1,
+                                    initializer: initializer1,
+                                    trainable: trainable1);
+                            });
+
+                        //if (init_graph != null)
+                            //var trainable_variables = variables.trainable_variables();
+                        
+                        return variable;
+                    });
                 });
-            });
         }
 
 
@@ -140,10 +157,20 @@ namespace Tensorflow.Layers
         {
             if (_scope == null)
             {
-                Python.with(tf.variable_scope(scope, default_name: _base_name), captured_scope =>
+                if(_reuse.HasValue && _reuse.Value)
                 {
-                    _scope = captured_scope;
-                });
+                    throw new NotImplementedException("_set_scope _reuse.HasValue");
+                    /*with(tf.variable_scope(scope == null ? _base_name : scope),
+                        captured_scope => _scope = captured_scope);*/
+                }
+                else
+                {
+                    with(tf.variable_scope(scope, default_name: _base_name), captured_scope =>
+                    {
+                        // convert variable_scope to VariableScope
+                        _scope = captured_scope;
+                    });
+                }
             }
         }
     }
